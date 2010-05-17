@@ -1,0 +1,16 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use lib 'lib';
+
+sub POE::Kernel::TRACE_SIGNALS () { 1 }
+use POE::Kernel {loop => "Glib"};
+use POE::Session;
+use POE;
+
+
+use Tether;
+
+Tether->new();
+POE::Kernel->run();

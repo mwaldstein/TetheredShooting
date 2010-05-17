@@ -1,0 +1,13 @@
+NOTES - 
+
+Got the sessions all messed up - sessions that don't do anything don't stay
+running, so they can't catch any signals. Need to re-work so sessions are only
+alive when working. 
+
+Two sessions remain running - 
+* GTK2 ui
+* Web ui
+
+Signals needed -
+* screen photo - to tell the local ui to redisplay
+* cell photo - to tell the web server to redisplay
