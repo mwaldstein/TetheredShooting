@@ -11,3 +11,37 @@ Two sessions remain running -
 Signals needed -
 * screen photo - to tell the local ui to redisplay
 * cell photo - to tell the web server to redisplay
+
+Options - 
+* Chain
+	UI (Web/GTK) -> Capture -> Rotate -> Convert -> Display (Signal)
+* Master
+	  UI	   Logic        Actor
+	Web/GTK -> Controller -> capture
+	 		      -> Rotate
+			      -> Convert
+
+UI Starts a controller + tells it what event to throw back when it is "done". 
+Same Parent/child process happens between Controller and Actors.
+UI doesn't need to know what is happening below it, only that an image comes
+back - could even pass a variable for what controller to use. Actors don't
+need to know anything about higher layers. Could probably put only the 
+controller in the 'Tether' Namespace, rest could go into Poe::Co - 
+Poe::Co::Generic::ActionUI::Web
+Poe::Co::Generic::ActionUI::GTK2
+Poe::Co::Generic::Photo::Capture
+Poe::Co::Generic::Photo::Rotate
+Poe::Co::Generic::Photo::Convert
+
+Then just Tether.pm that connects the pieces.
+
+"Simpler" namespace - 
+Tether::Ui::Gtk2
+Tether::Ui::Web
+Tether::Photo::Capture
+Tether::Photo::Rotate
+Tether::Photo::Convert
+
+Components should not use FindBin - all that information should come from 
+Tether.pm as absolute paths. The dangerous piece is Capture, which has to 
+change its directory. 
