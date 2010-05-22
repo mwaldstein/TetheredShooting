@@ -1,16 +1,18 @@
-package Tether::Gtk2Ui;
+package Tether::Ui::Gtk;
 use MooseX::POE;
 
 use Gtk2-init;
 use Gtk2::Gdk::Keysyms;
-use FindBin;
+
+with qw(MooseX::POE::Aliased);
+
+has parent => (
+    is      => 'rw',
+    isa     => 'Ref',
+);
 
 sub START {
   my ($self,  $kernel,  $session, $heap) = @_[OBJECT,  KERNEL,  SESSION, HEAP];
-
-  $kernel->sig("screenphoto", "ev_screenphoto");
-  $kernel->sig("shutdown", "ev_shutdown");
-  $kernel->sig("test", "ev_shutdown");
 
   $heap->{main_window} = Gtk2::Window->new("toplevel");
   $kernel->signal_ui_destroy($heap->{main_window});
@@ -36,25 +38,26 @@ sub START {
 event ev_keypress => sub {
   my ($self, $kernel,  $session,  $heap,  $args) = @_[OBJECT, KERNEL,  SESSION,  HEAP,  ARG1];
   my (undef,  $event) = @$args;
-  warn "keypress";
 
   if ($event->keyval == $Gtk2::Gdk::Keysyms{Escape}) {
-    $kernel->signal($kernel, "shutdown");
+#    $kernel->yield("ev_shutdown");
+    $kernel->post($self->parent, "ev_shutdown");
     return 1;
   }
 
 #  POE::Kernel->yield("ev_takeaction");
 #  POE::Kernel->yield("ev_screenphoto", 'images/screen/screen0018.jpg');
-  $kernel->signal($kernel, "phototaken", 'capt0038.jpg');
+#  $kernel->post($self->parent, 'ev_captured', $self->file);
+  $kernel->post($self->parent, 'ev_uiaction');
   return 1;
 };
 
 # takes the path to the screen-res photo in arg0
 # Updates the display with the new image
-event ev_screenphoto => sub {
+event ev_updatephoto => sub {
   my ($self, $kernel,  $session,  $heap,  $args) = @_[OBJECT, KERNEL,  SESSION,  HEAP,  ARG0];
 
-  $heap->{image}->set_from_file($FindBin::Bin . "/images/screen/$args");
+  $heap->{image}->set_from_file($args);
 };
 
 event ev_test => sub {
@@ -67,7 +70,7 @@ event ev_shutdown => sub {
   my ($self, $kernel,  $session,  $heap,  $args) = @_[OBJECT, KERNEL,  SESSION,  HEAP,  ARG1];
 
   $heap->{main_window}->destroy();
-
+  $kernel->alias_remove($heap->{alias});
   return 1;
   };
 

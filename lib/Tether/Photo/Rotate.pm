@@ -1,21 +1,23 @@
-package Tether::Rotate::Child;
+package Tether::Photo::Rotate;
 use MooseX::POE;
 use POE qw( Wheel::Run Filter::Line );
 use FindBin;
 
 has file => (
     is      => 'rw',
-    isa     => 'String',
+    isa     => 'Str',
+);
+
+has parent => (
+    is      => 'rw',
+    isa     => 'Ref',
 );
 
 sub START {
   my ($self,  $kernel,  $session, $heap) = @_[OBJECT,  KERNEL,  SESSION, HEAP];
 
-  my $baseDir  = $FindBin::Bin . '/images';
-  my $origFile = "$baseDir/full/" . $self->file;
-
   $heap->{child} = POE::Wheel::Run->new(
-    Program => ["exiftran", "-a", $self->dimensions, $origFile],    # Program to run.
+    Program => ["exiftran", "-a", "-i", $self->file],    # Program to run.
     StdioFilter  => POE::Filter::Line->new(),    # Child speaks in lines.
     StderrFilter => POE::Filter::Line->new(),    # Child speaks in lines.
     StdoutEvent  => "got_child_stdout",          # Child wrote to STDOUT.
@@ -45,7 +47,8 @@ event got_sigchild => sub {
 
   my ($pid, $status) = @_[ARG1, ARG2];
   
-  $kernel->signal($kernel, 'rotatedphoto', $self->file);
+  $kernel->post($self->parent, 'ev_rotated', $self->file);
+  delete $heap->{child};
 
   print "pid $pid exited with status $status.\n";
   my $child = delete $_[HEAP]{children_by_pid}{$pid};

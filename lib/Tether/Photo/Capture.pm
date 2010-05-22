@@ -1,30 +1,27 @@
-package Tether::Convert::Child;
+package Tether::Photo::Capture;
 use MooseX::POE;
 use POE qw( Wheel::Run Filter::Line );
-use FindBin;
+use DateTime;
 
-has file => (
+has parent => (
     is      => 'rw',
-    isa     => 'String',
+    isa     => 'Ref',
 );
-has type => (
+
+has capDir => (
     is      => 'rw',
-    isa     => 'String',
+    isa     => 'Str',
 );
-has dimensions => (
-    is      => 'rw',
-    isa     => 'String',
-);
+
+sub STOP {}
 
 sub START {
-  my ($self,  $kernel,  $session, $heap) = @_[OBJECT,  KERNEL,  SESSION, HEAP];
+  my ($self,  $kernel,  $session, $heap, $args) = @_[OBJECT,  KERNEL,  SESSION, HEAP, ARG0];
 
-  my $baseDir  = $FindBin::Bin . '/images';
-  my $origFile = "$baseDir/full/" . $self->file;
-  my $destFile = "$baseDir/" . $self->type . "/" . $self->file;
+  chdir $self->capDir;
 
   $heap->{child} = POE::Wheel::Run->new(
-    Program => ["convert", "-scale", $self->dimensions, $origFile, $destFile],    # Program to run.
+    Program => [ "gphoto2", "--capture-image-and-download" ],
     StdioFilter  => POE::Filter::Line->new(),    # Child speaks in lines.
     StderrFilter => POE::Filter::Line->new(),    # Child speaks in lines.
     StdoutEvent  => "got_child_stdout",          # Child wrote to STDOUT.
@@ -47,23 +44,24 @@ sub START {
 
 }
 
-sub STOP { }
+event got_sigchild => sub {
+    my ($self,  $kernel,  $session, $heap, $args) = @_[OBJECT,  KERNEL,  SESSION, HEAP, ARG0];
+    print "pid $_[ARG1] exited with status $_[ARG2].\n";
 
-event got_sigchild => sub { 
-  my ($self,  $kernel,  $session, $heap) = @_[OBJECT,  KERNEL,  SESSION, HEAP];
+    delete $_[HEAP]{children_by_pid}{$heap->{child}->PID};
+    delete $heap->{child};
 
-  my ($pid, $status) = @_[ARG1, ARG2];
-  
-  POE::Kernel->yield('ev_' . $self->type . 'photo');
+    my $dt = DateTime->now;
+    my $filename = $self->capDir . $dt->ymd('-') . "_" . $dt->hms('-') . '.jpg';
+    rename $self->capDir . 'capt0000.jpg', $filename;
+    # May have been reaped by on_child_close().
 
-  print "pid $pid exited with status $status.\n";
-  my $child = delete $_[HEAP]{children_by_pid}{$pid};
+    $kernel->post($self->parent, 'ev_captured', $filename);
 
-  # May have been reaped by on_child_close().
-  return unless defined $child;
+    delete $_[HEAP]{children_by_pid};
 
-  delete $_[HEAP]{children_by_wid}{$child->ID};
-};
+    delete $_[HEAP]{children_by_wid};
+  };
 
 event got_child_stdout => sub {
     my ($stdout_line, $wheel_id) = @_[ARG0, ARG1];
