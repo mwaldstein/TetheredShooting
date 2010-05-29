@@ -55,6 +55,8 @@ event ev_uiaction => sub {
 event ev_captured => sub {
   my ($self,  $kernel,  $session, $heap, $file) = @_[OBJECT,  KERNEL,  SESSION, HEAP, ARG0];
 
+  return unless (-e $file);
+
   Tether::Photo::Rotate->new(
     parent => $session, 
     file => $file, 
@@ -72,7 +74,7 @@ event ev_rotated => sub {
     parent => $session, 
     inFile => $file, 
     outFile => $FindBin::Bin . "/images/phone/$baseFile", 
-    dimensions => '480x', 
+    dimensions => '800x800', 
     type => 'phone', 
   );
 

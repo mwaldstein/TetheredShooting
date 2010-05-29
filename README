@@ -1,0 +1,11 @@
++-------------------+
+| Tethered Shooting |
++-------------------+
+
+TetheredShooting is a quick/dirty way to control a tethered camera +
+view the output 'live' as photos are taken. It also has a web component
+to allow for remote triggering, such as from a smart phone to allow
+wireless triggering. 
+
+Tethered shooting is written in perl using the POE framework with
+sprinklings of Moose for good measure. 
